@@ -7,7 +7,7 @@ import { useState } from "react";
 import { LogoSpinner } from "./LogoSpinner";
 import { MastercardMark, VippsMark, VisaMark } from "./PaymentMarks";
 import { PickupDateField } from "./PickupDateField";
-import { useCart } from "./cart";
+import { useCart, type CartLine } from "./cart";
 import { useShopStatus } from "./shop-status";
 import { createDemoReference, writeDemoOrder } from "@/lib/demo-order";
 import type { ClosedDay } from "@/lib/closed-days";
@@ -26,6 +26,61 @@ function detailsReady(name: string, phone: string, email: string) {
     name.trim().length >= 2 &&
     phone.replace(/\D/g, "").length >= 8 &&
     EMAIL_PATTERN.test(email.trim())
+  );
+}
+
+function BasketSummary({
+  lines,
+  totalOre,
+  note,
+  onRemove,
+}: {
+  lines: CartLine[];
+  totalOre: number;
+  note?: string;
+  onRemove?: (bouquetId: string) => void;
+}) {
+  const count = lines.reduce((sum, line) => sum + line.quantity, 0);
+
+  return (
+    <aside className="summary">
+      <h2>{count === 1 ? "Your item" : "Your items"}</h2>
+      {lines.map((line) => (
+        <div className="summary-line" key={line.bouquet.id}>
+          <span className="summary-thumb">
+            <Image
+              src={line.bouquet.image}
+              alt={line.bouquet.imageAlt}
+              fill
+              sizes="72px"
+            />
+          </span>
+          <span className="summary-line-text">
+            <strong>{line.bouquet.name}</strong>
+            <span className="qty">
+              {line.quantity} × {formatNok(line.bouquet.priceOre)}
+            </span>
+            {onRemove ? (
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => onRemove(line.bouquet.id)}
+              >
+                Remove
+              </button>
+            ) : null}
+          </span>
+          <span className="summary-line-price">
+            {formatNok(line.bouquet.priceOre * line.quantity)}
+          </span>
+        </div>
+      ))}
+      <div className="summary-total">
+        <span>Total</span>
+        <span>{formatNok(totalOre)}</span>
+      </div>
+      {note ? <p className="summary-note">{note}</p> : null}
+    </aside>
   );
 }
 
@@ -50,7 +105,7 @@ export function CheckoutForm({
   cancelled,
   payments,
 }: Props) {
-  const { lines, totalOre, itemCount, hydrated } = useCart();
+  const { lines, totalOre, itemCount, hydrated, setQuantity } = useCart();
   const { hydrated: shopHydrated, shopOpen } = useShopStatus();
 
   const [step, setStep] = useState<Step>("pickup");
@@ -215,39 +270,15 @@ export function CheckoutForm({
             />
           </div>
 
-          <aside className="summary">
-            <h2>Your order</h2>
-            {lines.map((line) => (
-              <div className="summary-line" key={line.bouquet.id}>
-                <span className="summary-thumb">
-                  <Image
-                    src={line.bouquet.image}
-                    alt={line.bouquet.imageAlt}
-                    fill
-                    sizes="72px"
-                  />
-                </span>
-                <span className="summary-line-text">
-                  <strong>{line.bouquet.name}</strong>
-                  <span className="qty">
-                    {line.quantity} × {formatNok(line.bouquet.priceOre)}
-                  </span>
-                </span>
-                <span className="summary-line-price">
-                  {formatNok(line.bouquet.priceOre * line.quantity)}
-                </span>
-              </div>
-            ))}
-            <div className="summary-total">
-              <span>Total</span>
-              <span>{formatNok(totalOre)}</span>
-            </div>
-            <p className="summary-note">
-              {provider === "invoice"
+          <BasketSummary
+            lines={lines}
+            totalOre={totalOre}
+            note={
+              provider === "invoice"
                 ? "We send the invoice after you place the order. Collect in the shop."
-                : "You pay now and collect in the shop. Nothing is shipped."}
-            </p>
-          </aside>
+                : "You pay now and collect in the shop. Nothing is shipped."
+            }
+          />
         </div>
       </div>
     );
@@ -262,6 +293,7 @@ export function CheckoutForm({
         Step {stepIndex + 1} of {STEPS.length}
       </p>
 
+      <div className="checkout">
       <div className="checkout-steps">
         {error ? (
           <p className="form-error" role="alert">
@@ -500,6 +532,13 @@ export function CheckoutForm({
             Continue
           </button>
         </div>
+      </div>
+
+      <BasketSummary
+        lines={lines}
+        totalOre={totalOre}
+        onRemove={(id) => setQuantity(id, 0)}
+      />
       </div>
     </form>
   );
