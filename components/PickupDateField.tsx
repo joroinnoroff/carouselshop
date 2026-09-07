@@ -85,14 +85,15 @@ export function PickupDateField({
   }));
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const slots = slotsOnDay(dayKey, now, closedKeys);
+  const slots = dayKey ? slotsOnDay(dayKey, now, closedKeys) : [];
 
   useEffect(() => {
+    if (!value) return;
     if (!dayKey || slots.length > 0 || !firstKey) return;
     setDayKey(firstKey);
     const next = slotsOnDay(firstKey, now, closedKeys);
     if (next[0]) onChange(next[0].id);
-  }, [closedKeys, dayKey, firstKey, now, onChange, slots.length]);
+  }, [closedKeys, dayKey, firstKey, now, onChange, slots.length, value]);
 
   useEffect(() => {
     if (!open) return;
@@ -118,7 +119,7 @@ export function PickupDateField({
     setOpen(false);
     const nextSlots = slotsOnDay(key, now, closedKeys);
     const keep = nextSlots.find((slot) => slot.id === value);
-    onChange((keep ?? nextSlots[0])?.id ?? "");
+    onChange(keep?.id ?? "");
   }
 
   function shiftMonth(delta: number) {
@@ -150,7 +151,7 @@ export function PickupDateField({
           <strong>{dayKey ? formatDayLong(dayKey) : "Choose a day"}</strong>
           <span className="pickup-date-hint">
             <CalendarIcon />
-            click to change
+            {dayKey ? "click to change" : "click to choose"}
           </span>
         </span>
         <span className="pickup-date-caret" aria-hidden>

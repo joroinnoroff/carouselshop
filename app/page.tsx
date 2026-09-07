@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { AddToBasket } from "@/components/AddToBasket";
+import { Galleri } from "@/components/Galleri";
 import { Logo3D } from "@/components/Logo3D";
 import { BOUQUETS, formatNok } from "@/lib/products";
 import { OPENING_HOURS_LABEL, SHOP_ADDRESS, isOpenNow } from "@/lib/pickup";
@@ -64,6 +65,8 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      <Galleri />
     </>
   );
 }

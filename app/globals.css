@@ -267,6 +267,50 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
 }
 
+.galleri {
+  padding-top: clamp(4.5rem, 10vw, 7.5rem);
+}
+
+.galleri-grid {
+  display: grid;
+  gap: clamp(1.25rem, 3vw, 2rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 36rem;
+}
+
+.galleri-frame {
+  margin: 0;
+}
+
+.galleri-media {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--fill);
+}
+
+.galleri-media video,
+.galleri-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.galleri-frame figcaption {
+  margin-top: 0.7rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 640px) {
+  .galleri-grid {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 22rem;
+  }
+}
+
 .bouquet {
   display: flex;
   flex-direction: column;
@@ -451,6 +495,46 @@ a.button {
 
 .page-title--checkout {
   padding-top: clamp(2rem, 6vw, 4rem);
+}
+
+.checkout-step-count {
+  margin: -1.4rem 0 1.75rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.checkout-steps {
+  max-width: 36rem;
+}
+
+.checkout-steps fieldset {
+  margin-bottom: 0;
+}
+
+.checkout-steps fieldset + fieldset {
+  margin-top: 2.5rem;
+}
+
+.checkout-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.75rem;
+}
+
+.checkout-actions .button {
+  min-width: 9rem;
+}
+
+.checkout-actions .button:disabled {
+  opacity: 1;
+}
+
+.checkout-pay-step .link-button {
+  margin-bottom: 1.5rem;
 }
 
 .checkout-pay {
@@ -794,6 +878,45 @@ legend {
   align-items: center;
   gap: 0.3rem;
   flex: none;
+}
+
+.pay-chosen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  appearance: none;
+  border: 0;
+  background: var(--fill);
+  padding: 0.6rem 0.85rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.pay-chosen:hover {
+  background: var(--fill-strong);
+}
+
+.pay-chosen strong {
+  display: block;
+  font-weight: 400;
+  font-size: 0.9rem;
+}
+
+.pay-chosen-text span {
+  display: block;
+  margin-top: 0.08rem;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+.pay-chosen .pay-marks {
+  margin-left: 0;
+}
+
+.pay-chosen .pay-mark {
+  height: 1.15rem;
 }
 
 .pay-mark {

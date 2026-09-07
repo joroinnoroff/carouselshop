@@ -12,12 +12,13 @@ import { useCart } from "./cart";
 import { useShopStatus } from "./shop-status";
 import { formatNok } from "@/lib/products";
 import type { ClosedDay } from "@/lib/closed-days";
-import { closedKeysOf } from "@/lib/closed-days";
-import { firstOpenDay, slotsOnDay } from "@/lib/pickup";
 import type { CustomerKind, PaymentProvider } from "@/lib/orders";
 
 const MESSAGE_LIMIT = 500;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const STEPS = ["pickup", "kind", "details", "pay"] as const;
+type Step = (typeof STEPS)[number];
 
 function detailsReady(name: string, phone: string, email: string) {
   return (
@@ -27,41 +28,10 @@ function detailsReady(name: string, phone: string, email: string) {
   );
 }
 
-function PayNowButton({
-  submitting,
-  provider,
-  disabled,
-  totalOre,
-}: {
-  submitting: boolean;
-  provider: PaymentProvider;
-  disabled: boolean;
-  totalOre: number;
-}) {
-  return (
-    <>
-      <button
-        type="submit"
-        className="button button--solid checkout-pay-button"
-        disabled={disabled}
-      >
-        {submitting
-          ? provider === "stripe"
-            ? "Opening card payment…"
-            : provider === "invoice"
-              ? "Sending your invoice order…"
-              : "Taking you to Vipps…"
-          : provider === "invoice"
-            ? `Order ${formatNok(totalOre)} · invoice`
-            : `Pay ${formatNok(totalOre)}`}
-      </button>
-      <p className="summary-note">
-        {provider === "invoice"
-          ? "We send the invoice after you place the order. Collect in the shop."
-          : "You pay now and collect in the shop. Nothing is shipped."}
-      </p>
-    </>
-  );
+function providerLabel(provider: PaymentProvider) {
+  if (provider === "invoice") return "Invoice";
+  if (provider === "vipps") return "Vipps";
+  return "Card";
 }
 
 type Props = {
@@ -81,17 +51,14 @@ export function CheckoutForm({
   payments,
   stripePublishableKey,
 }: Props) {
-  const { lines, totalOre, itemCount, hydrated, setQuantity } = useCart();
+  const { lines, totalOre, itemCount, hydrated } = useCart();
   const { hydrated: shopHydrated, shopOpen } = useShopStatus();
 
-  const [pickupOptionId, setPickupOptionId] = useState(() => {
-    const now = new Date(nowIso);
-    const closedKeys = closedKeysOf(closedDays);
-    const first = firstOpenDay(now, closedKeys);
-    return first ? (slotsOnDay(first.key, now, closedKeys)[0]?.id ?? "") : "";
-  });
-  const [provider, setProvider] = useState<PaymentProvider>("stripe");
-  const [customerKind, setCustomerKind] = useState<CustomerKind>("privat");
+  const [step, setStep] = useState<Step>("pickup");
+  const [pickupOptionId, setPickupOptionId] = useState("");
+  const [provider, setProvider] = useState<PaymentProvider | null>(null);
+  const [choosingPayment, setChoosingPayment] = useState(true);
+  const [customerKind, setCustomerKind] = useState<CustomerKind | null>(null);
   const [companyName, setCompanyName] = useState("");
   const [orgNumber, setOrgNumber] = useState("");
   const [name, setName] = useState("");
@@ -106,15 +73,19 @@ export function CheckoutForm({
     null,
   );
   const [embedReady, setEmbedReady] = useState(false);
-  const [showingPayment, setShowingPayment] = useState(false);
   const companyReady =
     customerKind === "privat" ||
-    (companyName.trim().length >= 2 &&
+    (customerKind === "bedrift" &&
+      companyName.trim().length >= 2 &&
       orgNumber.replace(/\D/g, "").length === 9);
-  const canPay =
-    Boolean(pickupOptionId) &&
-    detailsReady(name, phone, email) &&
-    companyReady;
+  const canContinue =
+    step === "pickup"
+      ? Boolean(pickupOptionId)
+      : step === "kind"
+        ? Boolean(customerKind)
+        : step === "details"
+          ? detailsReady(name, phone, email) && companyReady && Boolean(provider)
+          : false;
 
   if (shopHydrated && !shopOpen) {
     return (
@@ -151,9 +122,9 @@ export function CheckoutForm({
 
   function chooseProvider(next: PaymentProvider) {
     setProvider(next);
+    setChoosingPayment(false);
     setStripeClientSecret(null);
     setEmbedReady(false);
-    setShowingPayment(false);
   }
 
   function chooseKind(next: CustomerKind) {
@@ -162,26 +133,38 @@ export function CheckoutForm({
       chooseProvider("invoice");
       return;
     }
-    if (provider === "invoice") chooseProvider("stripe");
+    if (provider === "invoice" || !provider) {
+      setProvider(null);
+      setChoosingPayment(true);
+      setStripeClientSecret(null);
+      setEmbedReady(false);
+    }
   }
 
   function leavePayment() {
     setStripeClientSecret(null);
     setEmbedReady(false);
-    setShowingPayment(false);
     setSubmitting(false);
+    setStep("details");
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
+  function goBack() {
+    if (step === "kind") setStep("pickup");
+    if (step === "details") setStep("kind");
+  }
 
-    const form = new FormData(event.currentTarget);
-    setSubmitting(true);
-    setShowingPayment(true);
-    if (provider === "stripe") {
-      setEmbedReady(false);
+  async function startCheckout() {
+    if (!provider || !customerKind) {
+      setError("Choose how you would like to pay.");
+      setChoosingPayment(true);
+      setStep("details");
+      return;
     }
+
+    setError(null);
+    setSubmitting(true);
+    setStep("pay");
+    if (provider === "stripe") setEmbedReady(false);
 
     try {
       const response = await fetch("/api/checkout", {
@@ -197,10 +180,10 @@ export function CheckoutForm({
           customerKind,
           companyName,
           orgNumber,
-          name: form.get("name"),
-          phone: form.get("phone"),
-          email: form.get("email"),
-          message: form.get("message"),
+          name,
+          phone,
+          email,
+          message,
         }),
       });
 
@@ -213,7 +196,7 @@ export function CheckoutForm({
       if (!response.ok) {
         setError(body.error ?? "Something went wrong. Please try again.");
         setSubmitting(false);
-        setShowingPayment(false);
+        setStep("details");
         return;
       }
 
@@ -221,7 +204,7 @@ export function CheckoutForm({
         if (!body.clientSecret) {
           setError("Stripe did not start the card form. Please try again.");
           setSubmitting(false);
-          setShowingPayment(false);
+          setStep("details");
           return;
         }
         setStripeClientSecret(body.clientSecret);
@@ -232,7 +215,7 @@ export function CheckoutForm({
       if (!body.redirectUrl) {
         setError(body.error ?? "Something went wrong. Please try again.");
         setSubmitting(false);
-        setShowingPayment(false);
+        setStep("details");
         return;
       }
 
@@ -240,26 +223,35 @@ export function CheckoutForm({
     } catch {
       setError("We could not reach the payment provider. Please try again.");
       setSubmitting(false);
-      setShowingPayment(false);
+      setStep("details");
     }
   }
 
-  return (
-    <>
-      {showingPayment ? (
-        <div className="payment-only">
-          <h1 className="page-title page-title--checkout">Payment</h1>
-          {error ? (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          ) : null}
-          <p className="field-hint">{formatNok(totalOre)} · collect in the shop</p>
-          {provider === "stripe" ? (
-            <button type="button" className="link-button" onClick={leavePayment}>
-              Change order details
-            </button>
-          ) : null}
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canContinue) return;
+    if (step === "pickup") setStep("kind");
+    else if (step === "kind") setStep("details");
+    else if (step === "details") void startCheckout();
+  }
+
+  if (step === "pay") {
+    return (
+      <div className="checkout-pay-step">
+        <h1 className="page-title page-title--checkout">Payment</h1>
+        <p className="checkout-step-count">Step 4 of {STEPS.length}</p>
+        {error ? (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {provider === "stripe" ? (
+          <button type="button" className="link-button" onClick={leavePayment}>
+            Change order details
+          </button>
+        ) : null}
+
+        <div className="checkout">
           <div className="payment-stage">
             {provider === "stripe" && embedReady ? null : (
               <LogoSpinner
@@ -288,25 +280,62 @@ export function CheckoutForm({
               </div>
             ) : null}
           </div>
-        </div>
-      ) : null}
 
-      <form
-        onSubmit={handleSubmit}
-        hidden={showingPayment}
-        aria-hidden={showingPayment}
-        inert={showingPayment}
-      >
-      <h1 className="page-title page-title--checkout">Checkout</h1>
-
-      <div className="checkout">
-        <div>
-          {error ? (
-            <p className="form-error" role="alert">
-              {error}
+          <aside className="summary">
+            <h2>Your order</h2>
+            {lines.map((line) => (
+              <div className="summary-line" key={line.bouquet.id}>
+                <span className="summary-thumb">
+                  <Image
+                    src={line.bouquet.image}
+                    alt={line.bouquet.imageAlt}
+                    fill
+                    sizes="72px"
+                  />
+                </span>
+                <span className="summary-line-text">
+                  <strong>{line.bouquet.name}</strong>
+                  <span className="qty">
+                    {line.quantity} × {formatNok(line.bouquet.priceOre)}
+                  </span>
+                </span>
+                <span className="summary-line-price">
+                  {formatNok(line.bouquet.priceOre * line.quantity)}
+                </span>
+              </div>
+            ))}
+            <div className="summary-total">
+              <span>Total</span>
+              <span>{formatNok(totalOre)}</span>
+            </div>
+            <p className="summary-note">
+              {provider === "invoice"
+                ? "We send the invoice after you place the order. Collect in the shop."
+                : "You pay now and collect in the shop. Nothing is shipped."}
             </p>
-          ) : null}
+          </aside>
+        </div>
+      </div>
+    );
+  }
 
+  const stepIndex = STEPS.indexOf(step);
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <h1 className="page-title page-title--checkout">Checkout</h1>
+      <p className="checkout-step-count">
+        Step {stepIndex + 1} of {STEPS.length}
+      </p>
+
+      <div className="checkout-steps">
+        {error ? (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        {step === "pickup" ? (
           <fieldset>
             <legend>When would you like to collect it?</legend>
             <PickupDateField
@@ -317,7 +346,9 @@ export function CheckoutForm({
               onChange={setPickupOptionId}
             />
           </fieldset>
+        ) : null}
 
+        {step === "kind" ? (
           <fieldset>
             <legend>Privat or bedrift?</legend>
             <div className="option-list">
@@ -344,12 +375,15 @@ export function CheckoutForm({
                 />
                 <span className="option-text">
                   <strong>Bedrift</strong>
-                  <span>Invoice to the company — no card needed</span>
+                  <span>Invoice to the company</span>
                 </span>
               </label>
             </div>
           </fieldset>
+        ) : null}
 
+        {step === "details" ? (
+          <>
           <fieldset>
             <legend>Who is collecting?</legend>
             <div className="field-row">
@@ -428,132 +462,111 @@ export function CheckoutForm({
             </label>
           </fieldset>
 
-          <fieldset style={{ marginBottom: 0 }}>
+          <fieldset>
             <legend>Payment</legend>
-            <div className="option-list">
-              {customerKind === "bedrift" ? (
-                <label className="option">
-                  <input
-                    type="radio"
-                    name="provider"
-                    value="invoice"
-                    checked={provider === "invoice"}
-                    onChange={() => chooseProvider("invoice")}
-                  />
-                  <span className="option-text">
-                    <strong>Invoice</strong>
-                    <span>We bill the company. No card or Vipps</span>
-                  </span>
-                </label>
-              ) : (
-                <>
-                  <label className="option">
-                    <input
-                      type="radio"
-                      name="provider"
-                      value="stripe"
-                      checked={provider === "stripe"}
-                      onChange={() => chooseProvider("stripe")}
-                    />
-                    <span className="option-text">
-                      <strong>Card</strong>
-                      <span>Visa, Mastercard and Apple Pay</span>
-                    </span>
-                    <span className="pay-marks">
-                      <VisaMark />
-                      <MastercardMark />
-                    </span>
-                    {payments.stripe ? null : (
-                      <span className="option-badge"></span>
-                    )}
-                  </label>
-                  {payments.vipps ? null : (
-                      <span className="option-badge">Vipps ikke konfigurert enda</span>
-                    )}
-                  <label className="option">
-               
-                    <input
-                      type="radio"
-                      name="provider"
-                      value="vipps"
-                      checked={provider === "vipps"}
-                      onChange={() => chooseProvider("vipps")}
-                    />
-                    <span className="option-text">
-                      <strong>Vipps</strong>
-                      <span>Confirm the payment in the Vipps app</span>
-                    </span>
-                    <span className="pay-marks">
-                      <VippsMark />
-                    </span>
-               
-                  </label>
-                </>
-              )}
-            </div>
-          </fieldset>
-
-        </div>
-
-        <aside className="summary">
-          <h2>Your order</h2>
-
-          {lines.map((line) => (
-            <div className="summary-line" key={line.bouquet.id}>
-              <span className="summary-thumb">
-                <Image
-                  src={line.bouquet.image}
-                  alt={line.bouquet.imageAlt}
-                  fill
-                  sizes="72px"
-                />
-              </span>
-
-              <span className="summary-line-text">
-                <strong>{line.bouquet.name}</strong>
-                <span className="qty">
-                  {line.quantity} × {formatNok(line.bouquet.priceOre)}
+            {provider && !choosingPayment ? (
+              <button
+                type="button"
+                className="pay-chosen"
+                aria-expanded={false}
+                onClick={() => setChoosingPayment(true)}
+              >
+                <span className="pay-chosen-text">
+                  <strong>{providerLabel(provider)}</strong>
+                  <span>click to change</span>
                 </span>
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={() => setQuantity(line.bouquet.id, 0)}
-                >
-                  Remove
-                </button>
-              </span>
+                {provider === "stripe" ? (
+                  <span className="pay-marks">
+                    <VisaMark />
+                    <MastercardMark />
+                  </span>
+                ) : provider === "vipps" ? (
+                  <span className="pay-marks">
+                    <VippsMark />
+                  </span>
+                ) : null}
+              </button>
+            ) : (
+              <div className="option-list">
+                {customerKind === "bedrift" ? (
+                  <label className="option">
+                    <input
+                      type="radio"
+                      name="provider"
+                      value="invoice"
+                      checked={provider === "invoice"}
+                      onChange={() => chooseProvider("invoice")}
+                    />
+                    <span className="option-text">
+                      <strong>Invoice</strong>
+                      <span>We bill the company. No card or Vipps</span>
+                    </span>
+                  </label>
+                ) : (
+                  <>
+                    <label className="option">
+                      <input
+                        type="radio"
+                        name="provider"
+                        value="stripe"
+                        checked={provider === "stripe"}
+                        onChange={() => chooseProvider("stripe")}
+                      />
+                      <span className="option-text">
+                        <strong>Card</strong>
+                        <span>Visa, Mastercard and Apple Pay</span>
+                      </span>
+                      <span className="pay-marks">
+                        <VisaMark />
+                        <MastercardMark />
+                      </span>
+                    </label>
+                    <label className="option">
+                      <input
+                        type="radio"
+                        name="provider"
+                        value="vipps"
+                        checked={provider === "vipps"}
+                        onChange={() => chooseProvider("vipps")}
+                      />
+                      <span className="option-text">
+                        <strong>Vipps</strong>
+                        <span>Confirm the payment in the Vipps app</span>
+                      </span>
+                      <span className="pay-marks">
+                        <VippsMark />
+                      </span>
+                      {payments.vipps ? null : (
+                        <span className="option-badge">
+                          Vipps ikke konfigurert enda
+                        </span>
+                      )}
+                    </label>
+                  </>
+                )}
+              </div>
+            )}
+          </fieldset>
+          </>
+        ) : null}
 
-              <span className="summary-line-price">
-                {formatNok(line.bouquet.priceOre * line.quantity)}
-              </span>
-            </div>
-          ))}
-
-          <div className="summary-total">
-            <span>Total</span>
-            <span>{formatNok(totalOre)}</span>
-          </div>
-
-          <div className="summary-pay">
-            <PayNowButton
-              submitting={submitting}
-              provider={provider}
-              disabled={submitting || !canPay}
-              totalOre={totalOre}
-            />
-          </div>
-        </aside>
-
-        <div className="checkout-pay">
-          <PayNowButton
-            submitting={submitting}
-            provider={provider}
-            disabled={submitting || !canPay}
-            totalOre={totalOre}
-          />
+        <div className="checkout-actions">
+          {step === "pickup" ? (
+            <span />
+          ) : (
+            <button type="button" className="link-button" onClick={goBack}>
+              Back
+            </button>
+          )}
+          <button
+            type="submit"
+            className={canContinue ? "button button--solid" : "button"}
+            disabled={!canContinue || submitting}
+          >
+            Continue
+          </button>
         </div>
       </div>
     </form>
-    </>
   );
 }
