@@ -1,0 +1,839 @@
+/* ---------------------------------------------------------------------------
+   Palette and type are lifted from carouseloslo.no: the pale yellow ground,
+   black ink, and the same "STK Bureau Sans" stack the original declares.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --paper: #fcf7c6;
+  --ink: #000000;
+  --ink-soft: rgba(0, 0, 0, 0.55);
+  /* No rules anywhere — separation comes from space and soft fills. */
+  --fill: rgba(0, 0, 0, 0.045);
+  --fill-strong: rgba(0, 0, 0, 0.09);
+  --focus: #1c4bd8;
+
+  --font-sans: "STK Bureau Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  --gutter: clamp(1.25rem, 4vw, 3.5rem);
+  --header-height: 5.5rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 18.4px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 300;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* --- layout -------------------------------------------------------------- */
+
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.25rem var(--gutter);
+  background: var(--paper);
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.75rem, 3vw, 2rem);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header-meta .muted {
+  color: var(--ink-soft);
+}
+
+@media (max-width: 560px) {
+  .header-meta .muted {
+    display: none;
+  }
+}
+
+.site-main {
+  flex: 1;
+  padding: 0 var(--gutter) 5rem;
+}
+
+.site-footer {
+  padding: 3rem var(--gutter) 3rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem 3rem;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.site-footer strong {
+  display: block;
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  margin-bottom: 0.35rem;
+}
+
+/* --- spinning wordmark --------------------------------------------------- */
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.logo:hover {
+  text-decoration: none;
+}
+
+.logo-stage {
+  --face: 2.1rem;
+  /* Radius of a triangular prism whose faces are --face tall. */
+  --radius: calc(var(--face) / 3.4641);
+  height: var(--face);
+  width: max-content;
+  perspective: 700px;
+}
+
+.logo-spin {
+  position: relative;
+  height: var(--face);
+  transform-style: preserve-3d;
+  animation: logo-carousel 7.5s cubic-bezier(0.72, 0.02, 0.24, 1) infinite;
+}
+
+.logo-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  font-size: clamp(1.4rem, 3.2vw, 1.9rem);
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  backface-visibility: hidden;
+  transform: rotateX(var(--turn)) translateZ(var(--radius));
+}
+
+.logo-face:nth-child(1) { --turn: 0deg; }
+.logo-face:nth-child(2) { --turn: -120deg; }
+.logo-face:nth-child(3) { --turn: -240deg; }
+
+/* Keeps the layout box the right width without showing a fourth copy. */
+.logo-sizer {
+  visibility: hidden;
+  font-size: clamp(1.4rem, 3.2vw, 1.9rem);
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+@keyframes logo-carousel {
+  0%, 22% { transform: rotateX(0deg); }
+  33%, 55% { transform: rotateX(120deg); }
+  66%, 88% { transform: rotateX(240deg); }
+  100% { transform: rotateX(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-spin {
+    animation: none;
+  }
+}
+
+/* --- home ---------------------------------------------------------------- */
+
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem 3rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: clamp(4rem, 12vw, 9rem) 0 clamp(3.5rem, 8vw, 6rem);
+}
+
+.hero-lede {
+  max-width: 30rem;
+  font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+  line-height: 1.5;
+}
+
+.hero-meta {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  text-align: right;
+}
+
+.hero-meta strong {
+  display: block;
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  margin-bottom: 0.35rem;
+}
+
+@media (max-width: 560px) {
+  .hero-meta {
+    text-align: left;
+  }
+}
+
+.section-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.bouquet-grid {
+  display: grid;
+  gap: clamp(1.75rem, 3vw, 2.75rem);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+}
+
+.bouquet {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-bottom: 1rem;
+}
+
+.bouquet-photo {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  /* Keeps a single-column phone layout from turning into one photo a screen. */
+  max-height: 58vh;
+  overflow: hidden;
+  background: var(--fill);
+}
+
+.bouquet-photo img {
+  object-fit: cover;
+  transition: transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.bouquet:hover .bouquet-photo img {
+  transform: scale(1.03);
+}
+
+.bouquet-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.bouquet-head h3 {
+  font-size: 1.35rem;
+  letter-spacing: 0.02em;
+}
+
+.bouquet-price {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.bouquet-tagline {
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-top: -0.9rem;
+}
+
+.bouquet-description {
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+  flex: 1;
+}
+
+/* --- controls ------------------------------------------------------------ */
+
+.button {
+  appearance: none;
+  border: 0;
+  background: var(--fill-strong);
+  color: var(--ink);
+  padding: 0.7rem 1.4rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--paper);
+  text-decoration: none;
+}
+
+/* Anchors styled as buttons need the block box back. */
+a.button {
+  display: inline-block;
+}
+
+.button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.button--solid {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.button--solid:hover:not(:disabled) {
+  background: var(--fill-strong);
+  color: var(--ink);
+}
+
+.button--ghost {
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 0.35em;
+}
+
+.button--ghost:hover:not(:disabled) {
+  background: transparent;
+  color: var(--ink);
+}
+
+.quantity {
+  display: inline-flex;
+  align-items: center;
+  background: var(--fill-strong);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.quantity button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  width: 2.2rem;
+  height: 2.2rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.quantity button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.09);
+}
+
+.quantity button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.quantity span {
+  min-width: 1.6rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+}
+
+.bouquet-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.cart-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cart-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- checkout ------------------------------------------------------------ */
+
+.checkout {
+  display: grid;
+  gap: clamp(2rem, 5vw, 4rem);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  align-items: start;
+  max-width: 68rem;
+}
+
+.page-title--checkout {
+  padding-top: clamp(2rem, 6vw, 4rem);
+}
+
+@media (max-width: 860px) {
+  .checkout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* On a phone the order recap belongs above the form, not a scroll away. */
+  .summary {
+    order: -1;
+  }
+}
+
+.page-title {
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  margin-bottom: 2rem;
+}
+
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 2.5rem;
+}
+
+legend {
+  padding: 0;
+  width: 100%;
+  margin-bottom: 1.1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.field {
+  display: block;
+  margin-bottom: 1.1rem;
+}
+
+.field > span {
+  display: block;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 0.4rem;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  background: var(--fill);
+  border: 0;
+  border-radius: 0;
+  padding: 0.75rem 0.9rem;
+  transition: background 150ms ease;
+}
+
+.field input:hover,
+.field textarea:hover,
+.field input:focus,
+.field textarea:focus {
+  background: var(--fill-strong);
+}
+
+.field textarea {
+  min-height: 6.5rem;
+  resize: vertical;
+}
+
+.field-hint {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  margin-top: 0.4rem;
+}
+
+.field-row {
+  display: grid;
+  gap: 0 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+}
+
+.option-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: var(--fill);
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.option:hover {
+  background: var(--fill-strong);
+}
+
+.option:has(input:checked) {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.option:has(input:checked) .option-text span {
+  color: rgba(252, 247, 198, 0.7);
+}
+
+.option:has(input:checked) input {
+  accent-color: var(--paper);
+}
+
+.option input {
+  accent-color: var(--ink);
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+}
+
+.option-text strong {
+  display: block;
+  font-weight: 400;
+}
+
+.option-text span {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.option-badge {
+  margin-left: auto;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  background: var(--fill-strong);
+  color: var(--ink-soft);
+}
+
+.option:has(input:checked) .option-badge {
+  background: rgba(252, 247, 198, 0.2);
+  color: var(--paper);
+}
+
+/* --- summary ------------------------------------------------------------- */
+
+.summary {
+  background: var(--fill);
+  padding: clamp(1.5rem, 3vw, 2rem);
+}
+
+/* Only follow the scroll on desktop — on phones and tablets it should sit
+   still at the top of the page. */
+@media (min-width: 1025px) {
+  .summary {
+    position: sticky;
+    top: calc(var(--header-height) + 1.5rem);
+  }
+}
+
+.summary h2 {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 1.25rem;
+}
+
+.summary-line {
+  display: flex;
+  gap: 0.9rem;
+  padding: 0.55rem 0;
+  align-items: center;
+}
+
+.summary-thumb {
+  position: relative;
+  flex: none;
+  width: 3.6rem;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: var(--fill-strong);
+}
+
+.summary-thumb img {
+  object-fit: cover;
+}
+
+.summary-line-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.summary-line-text strong {
+  font-weight: 400;
+}
+
+.summary-line-price {
+  margin-left: auto;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.link-button {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.link-button:hover {
+  color: var(--ink);
+}
+
+.summary-line .qty {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.35rem;
+  font-size: 1.15rem;
+}
+
+.summary-note {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin-top: 1.25rem;
+}
+
+.form-error {
+  background: rgba(163, 49, 42, 0.1);
+  color: #a3312a;
+  padding: 0.75rem 1rem;
+  font-size: 0.88rem;
+  margin-bottom: 1.25rem;
+}
+
+.empty-state {
+  padding: clamp(3rem, 10vw, 7rem) 0;
+  max-width: 32rem;
+  display: grid;
+  gap: 1.5rem;
+  justify-items: start;
+}
+
+/* --- confirmation -------------------------------------------------------- */
+
+.confirmation {
+  padding-top: clamp(3rem, 8vw, 6rem);
+  max-width: 40rem;
+  display: grid;
+  gap: 1.5rem;
+  justify-items: start;
+}
+
+.confirmation dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.6rem 2rem;
+  width: 100%;
+  font-size: 0.95rem;
+}
+
+.confirmation dt {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  align-self: center;
+}
+
+.confirmation dd {
+  margin: 0;
+}
+
+.status-pill {
+  display: inline-block;
+  background: var(--fill-strong);
+  border-radius: 999px;
+  padding: 0.25rem 0.85rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* --- order progress ------------------------------------------------------ */
+
+.progress {
+  width: 100%;
+  padding: 0.5rem 0;
+}
+
+.progress-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1.1rem;
+}
+
+.progress-status {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.progress-countdown {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+}
+
+.progress-bar {
+  display: flex;
+  gap: 3px;
+  height: 1.6rem;
+}
+
+.seg {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.13);
+  transition: background 600ms ease;
+}
+
+.seg--done {
+  background: var(--ink);
+}
+
+.progress-stages {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.stage {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 0.9rem;
+  color: rgba(0, 0, 0, 0.35);
+  transition: color 400ms ease;
+}
+
+.stage--done {
+  color: var(--ink);
+}
+
+.stage-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.2);
+  transition: background 400ms ease;
+}
+
+.stage--done .stage-dot {
+  background: var(--ink);
+}
+
+.progress-foot {
+  margin-top: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg,
+  .stage,
+  .stage-dot {
+    transition: none;
+  }
+}
