@@ -48,7 +48,7 @@ export const BOUQUETS: Bouquet[] = [
     name: "Large",
     tagline: "Signature",
     description:
-      "Hydrangea, roses and seasonal foliage, wrapped for collection.",
+      "Hydrangea and roses in peach paper, wrapped for collection.",
     priceOre: 50000,
     image: "/flower3.webp",
     imageAlt:

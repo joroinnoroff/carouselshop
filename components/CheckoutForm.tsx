@@ -502,11 +502,7 @@ export function CheckoutForm({
                       <span className="pay-marks">
                         <VippsMark />
                       </span>
-                      {payments.vipps ? null : (
-                        <span className="option-badge">
-                          Vipps ikke konfigurert enda
-                        </span>
-                      )}
+                   
                     </label>
                   </>
                 )}
