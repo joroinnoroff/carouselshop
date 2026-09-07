@@ -6,6 +6,7 @@ import { getOrder, updateOrder, type Order } from "@/lib/orders";
 import { formatNok } from "@/lib/products";
 import { SHOP_ADDRESS, pickupReadyAt } from "@/lib/pickup";
 import { getStripe } from "@/lib/stripe";
+import { orderFromPaidStripeSession } from "@/lib/stripe-order";
 import { getVippsPayment } from "@/lib/vipps";
 
 export const dynamic = "force-dynamic";
@@ -28,12 +29,12 @@ async function confirmPayment(
       const session = await getStripe().checkout.sessions.retrieve(id);
       if (session.client_reference_id !== order.reference) return order;
       if (session.payment_status === "paid") {
-        return (
-          (await updateOrder(order.reference, {
-            status: "paid",
-            paidAt: order.paidAt ?? new Date().toISOString(),
-          })) ?? order
-        );
+        const paid = {
+          ...order,
+          status: "paid" as const,
+          paidAt: order.paidAt ?? new Date().toISOString(),
+        };
+        return (await updateOrder(order.reference, paid)) ?? paid;
       }
       return order;
     }
@@ -89,7 +90,11 @@ export default async function OrderPage({
   const { reference } = await params;
   const { session_id: sessionId } = await searchParams;
 
-  const stored = await getOrder(reference);
+  const stored =
+    (await getOrder(reference)) ??
+    (sessionId
+      ? await orderFromPaidStripeSession(sessionId, reference)
+      : undefined);
 
   if (!stored) {
     return (

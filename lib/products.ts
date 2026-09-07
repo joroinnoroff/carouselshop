@@ -22,9 +22,9 @@ export const BOUQUETS: Bouquet[] = [
   {
     id: "hverdag",
     name: "Small",
-    tagline: "The small weekly one",
+    tagline: "Everyday",
     description:
-      "A compact posy — garden roses, sweet peas and gypsophila in soft pink and lilac. Made for a kitchen table, or for no reason at all.",
+      "A compact seasonal bouquet. For the table or a simple gift.",
     priceOre: 30000,
     image: "/flower2.webp",
     imageAlt:
@@ -34,9 +34,9 @@ export const BOUQUETS: Bouquet[] = [
   {
     id: "sommer",
     name: "Medium",
-    tagline: "Loose, light and seasonal",
+    tagline: "Seasonal",
     description:
-      "Whatever came in fresh that morning, tied loosely — dahlias, cosmos, chamomile and wild umbels. Always a little different.",
+      "A loosely tied bouquet of the day's best stems.",
     priceOre: 40000,
     image: "/flower1.webp",
     imageAlt:
@@ -46,9 +46,9 @@ export const BOUQUETS: Bouquet[] = [
   {
     id: "grunersgate",
     name: "Large",
-    tagline: "Our house bouquet",
+    tagline: "Signature",
     description:
-      "The one we make most days: hydrangea and roses through clouds of astilbe, with dried material for contrast, in peach paper.",
+      "Hydrangea, roses and seasonal foliage, wrapped for collection.",
     priceOre: 50000,
     image: "/flower3.webp",
     imageAlt:
@@ -58,9 +58,9 @@ export const BOUQUETS: Bouquet[] = [
   {
     id: "karusell",
     name: "Ekstra Large",
-    tagline: "Generous, for an occasion",
+    tagline: "Occasion",
     description:
-      "Our largest arrangement. Anthurium, ranunculus and pincushion protea in hot coral and pink — florist's choice, in volume.",
+      "A generous arrangement for celebrations. Florist's choice.",
     priceOre: 60000,
     image: "/flower4.webp",
     imageAlt:
