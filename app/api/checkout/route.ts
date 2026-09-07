@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { closedKeysOf } from "@/lib/closed-days";
+import { listClosedDays } from "@/lib/closed-days-store";
 import { CheckoutError, siteUrl, toMsisdn, validateCheckout } from "@/lib/checkout";
 import { createReference, saveOrder, updateOrder, type Order } from "@/lib/orders";
 import { getStripe } from "@/lib/stripe";
@@ -9,7 +11,9 @@ import { formatNok } from "@/lib/products";
 export async function POST(request: Request) {
   let checkout;
   try {
-    checkout = validateCheckout(await request.json());
+    checkout = validateCheckout(await request.json(), {
+      closedKeys: closedKeysOf(await listClosedDays()),
+    });
   } catch (error) {
     if (error instanceof CheckoutError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
@@ -28,6 +32,9 @@ export async function POST(request: Request) {
     customerName: checkout.name,
     customerPhone: checkout.phone,
     customerEmail: checkout.email,
+    customerKind: checkout.customerKind,
+    companyName: checkout.companyName || undefined,
+    orgNumber: checkout.orgNumber || undefined,
     message: checkout.message,
     createdAt: new Date().toISOString(),
   };
@@ -40,8 +47,13 @@ export async function POST(request: Request) {
       : `Pick up ${checkout.pickup.detail.toLowerCase()} ${checkout.pickup.label}`;
 
   try {
+    if (checkout.provider === "invoice") {
+      return NextResponse.json({ reference, redirectUrl: returnUrl });
+    }
+
     if (checkout.provider === "stripe") {
       const session = await getStripe().checkout.sessions.create({
+        ui_mode: "embedded_page",
         mode: "payment",
         client_reference_id: reference,
         customer_email: checkout.email,
@@ -58,13 +70,28 @@ export async function POST(request: Request) {
           pickup: `${checkout.pickup.detail} ${checkout.pickup.label}`,
           message: checkout.message,
         },
-        success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${siteUrl()}/checkout?cancelled=1`,
+        return_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
+        redirect_on_completion: "always",
+        branding_settings: {
+          background_color: "#fcf7c6",
+          button_color: "#000000",
+          border_style: "pill",
+          display_name: "Carousel Oslo",
+          font_family: "pt_sans",
+        },
+        custom_text: {
+          submit: { message: "Pay and collect in the shop" },
+        },
       });
 
-      if (!session.url) throw new Error("Stripe did not return a checkout URL.");
+      if (!session.client_secret) {
+        throw new Error("Stripe did not return a client secret.");
+      }
       await updateOrder(reference, { providerReference: session.id });
-      return NextResponse.json({ reference, redirectUrl: session.url });
+      return NextResponse.json({
+        reference,
+        clientSecret: session.client_secret,
+      });
     }
 
     const payment = await createVippsPayment({

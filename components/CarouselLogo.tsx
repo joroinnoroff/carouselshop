@@ -1,20 +1,16 @@
 import Link from "next/link";
 
+import { Logo3D } from "@/components/Logo3D";
+
 /**
- * The wordmark: "Carousel" set on the three faces of a prism that turns
- * forever, so the name comes round again and again — a carousel of Carousels.
+ * Shop mark: the chrome flower in miniature, plus the wordmark.
+ * The large turntable lives on the home hero.
  */
 export function CarouselLogo() {
   return (
     <Link href="/" className="logo" aria-label="Carousel Oslo — home">
-      <span className="logo-stage">
-        <span className="logo-spin" aria-hidden>
-          <span className="logo-face">Carousel</span>
-          <span className="logo-face">Carousel</span>
-          <span className="logo-face">Carousel</span>
-          <span className="logo-sizer">Carousel</span>
-        </span>
-      </span>
+      <Logo3D variant="mark" />
+      <span className="logo-word">Carousel</span>
     </Link>
   );
 }

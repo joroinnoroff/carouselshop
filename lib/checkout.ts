@@ -6,12 +6,15 @@
 
 import { getBouquet } from "./products";
 import { findPickupOption, type PickupOption } from "./pickup";
-import type { OrderLine, PaymentProvider } from "./orders";
+import type { CustomerKind, OrderLine, PaymentProvider } from "./orders";
 
 export type CheckoutPayload = {
   items: { bouquetId: string; quantity: number }[];
   pickupOptionId: string;
   provider: PaymentProvider;
+  customerKind?: CustomerKind;
+  companyName?: string;
+  orgNumber?: string;
   name: string;
   phone: string;
   email: string;
@@ -23,6 +26,9 @@ export type ValidatedCheckout = {
   totalOre: number;
   pickup: PickupOption;
   provider: PaymentProvider;
+  customerKind: CustomerKind;
+  companyName: string;
+  orgNumber: string;
   name: string;
   phone: string;
   email: string;
@@ -38,12 +44,36 @@ function str(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export function validateCheckout(body: unknown): ValidatedCheckout {
+export function validateCheckout(
+  body: unknown,
+  options?: { closedKeys?: Iterable<string> },
+): ValidatedCheckout {
   const payload = (body ?? {}) as Partial<CheckoutPayload>;
 
   const provider = payload.provider;
-  if (provider !== "stripe" && provider !== "vipps") {
+  if (provider !== "stripe" && provider !== "vipps" && provider !== "invoice") {
     throw new CheckoutError("Choose a payment method.");
+  }
+
+  const customerKind = payload.customerKind === "bedrift" ? "bedrift" : "privat";
+  if (customerKind === "privat" && provider === "invoice") {
+    throw new CheckoutError("Invoice is only for company orders.");
+  }
+  if (customerKind === "bedrift" && provider !== "invoice") {
+    throw new CheckoutError("Company orders are billed by invoice.");
+  }
+  if (provider === "vipps" && customerKind === "bedrift") {
+    throw new CheckoutError("Vipps is instant — invoice is only for companies.");
+  }
+
+  const companyName = customerKind === "bedrift" ? str(payload.companyName) : "";
+  const orgNumber =
+    customerKind === "bedrift" ? str(payload.orgNumber).replace(/\s/g, "") : "";
+  if (customerKind === "bedrift" && companyName.length < 2) {
+    throw new CheckoutError("Please add the company name.");
+  }
+  if (customerKind === "bedrift" && orgNumber.replace(/\D/g, "").length !== 9) {
+    throw new CheckoutError("Please add a 9-digit organisation number.");
   }
 
   if (!Array.isArray(payload.items) || payload.items.length === 0) {
@@ -81,7 +111,11 @@ export function validateCheckout(body: unknown): ValidatedCheckout {
     });
   }
 
-  const pickup = findPickupOption(str(payload.pickupOptionId));
+  const pickup = findPickupOption(
+    str(payload.pickupOptionId),
+    new Date(),
+    options?.closedKeys,
+  );
   if (!pickup) {
     throw new CheckoutError(
       "That pickup time is no longer available — please pick another.",
@@ -110,7 +144,19 @@ export function validateCheckout(body: unknown): ValidatedCheckout {
     0,
   );
 
-  return { lines, totalOre, pickup, provider, name, phone, email, message };
+  return {
+    lines,
+    totalOre,
+    pickup,
+    provider,
+    customerKind,
+    companyName,
+    orgNumber,
+    name,
+    phone,
+    email,
+    message,
+  };
 }
 
 /** Vipps wants a Norwegian MSISDN without "+" — best effort, undefined if unsure. */

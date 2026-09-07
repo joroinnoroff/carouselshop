@@ -13,7 +13,8 @@ import path from "node:path";
 import type { PickupOption } from "./pickup";
 
 export type OrderStatus = "pending" | "paid" | "cancelled" | "failed";
-export type PaymentProvider = "stripe" | "vipps";
+export type PaymentProvider = "stripe" | "vipps" | "invoice";
+export type CustomerKind = "privat" | "bedrift";
 
 export type OrderLine = {
   bouquetId: string;
@@ -33,9 +34,14 @@ export type Order = {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
+  customerKind?: CustomerKind;
+  companyName?: string;
+  orgNumber?: string;
   /** Optional note from the customer — a card message, an allergy, anything. */
   message: string;
   createdAt: string;
+  /** Set by Stripe/Vipps webhooks (or when an invoice is recorded as paid). */
+  paidAt?: string;
   /** Provider-side id, once we have one. */
   providerReference?: string;
 };

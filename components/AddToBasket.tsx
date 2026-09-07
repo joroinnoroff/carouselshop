@@ -1,10 +1,12 @@
 "use client";
 
 import { useCart } from "./cart";
+import { useShopStatus } from "./shop-status";
 import type { Bouquet } from "@/lib/products";
 
 export function AddToBasket({ bouquet }: { bouquet: Bouquet }) {
   const { quantityOf, add, setQuantity } = useCart();
+  const { hydrated, shopOpen } = useShopStatus();
   const quantity = quantityOf(bouquet.id);
 
   if (!bouquet.available) {
@@ -12,6 +14,16 @@ export function AddToBasket({ bouquet }: { bouquet: Bouquet }) {
       <div className="bouquet-actions">
         <span className="bouquet-tagline" style={{ marginTop: 0 }}>
           Sold out today
+        </span>
+      </div>
+    );
+  }
+
+  if (hydrated && !shopOpen) {
+    return (
+      <div className="bouquet-actions">
+        <span className="bouquet-tagline" style={{ marginTop: 0 }}>
+          Online orders paused
         </span>
       </div>
     );

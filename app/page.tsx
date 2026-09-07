@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { AddToBasket } from "@/components/AddToBasket";
+import { Logo3D } from "@/components/Logo3D";
 import { BOUQUETS, formatNok } from "@/lib/products";
 import { OPENING_HOURS_LABEL, SHOP_ADDRESS, isOpenNow } from "@/lib/pickup";
 
@@ -15,14 +16,20 @@ export default function HomePage() {
       {/* Spread to the corners, the way the shop's own site and our footer
           set their information. */}
       <section className="hero">
-        <p className="hero-lede">
-          Order here, choose when you want it, and collect it in{" "}
-          {SHOP_ADDRESS.split(",")[0]}.
-        </p>
+        <figure className="hero-logo" aria-label="Carousel Oslo">
+          <Logo3D variant="hero" />
+        </figure>
 
-        <div className="hero-meta">
-          <strong>{open ? "Open now" : "Closed right now"}</strong>
-          {OPENING_HOURS_LABEL}
+        <div className="hero-bar">
+          <p className="hero-lede">
+            Order here, choose when you want it, and collect it in{" "}
+            {SHOP_ADDRESS.split(",")[0]}.
+          </p>
+
+          <div className="hero-meta">
+            <strong>{open ? "Open now" : "Closed right now"}</strong>
+            {OPENING_HOURS_LABEL}
+          </div>
         </div>
       </section>
 

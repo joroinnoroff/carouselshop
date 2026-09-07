@@ -36,6 +36,9 @@ export const PICKUP_WINDOWS = [
 /** How many scheduled slots to offer alongside "pick up now". */
 export const SLOT_COUNT = 3;
 
+/** Furthest ahead a customer can book from the calendar. */
+export const BOOKING_HORIZON_DAYS = 56;
+
 export type PickupOption = {
   /** Stable id — "now", or "2026-09-09T720" (date + window start minute). */
   id: string;
@@ -184,12 +187,163 @@ export function getPickupOptions(at: Date = new Date()): PickupOption[] {
   return options;
 }
 
-/** Server-side validation: only ids we would actually have offered are valid. */
+export type PickupDay = {
+  key: string;
+  year: number;
+  month: number;
+  day: number;
+  weekday: number;
+};
+
+function toPickupDay(d: {
+  year: number;
+  month: number;
+  day: number;
+  weekday: number;
+}): PickupDay {
+  return { ...d, key: dateKey(d) };
+}
+
+export function formatDayLong(key: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!match) return key;
+  const asDate = new Date(
+    Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])),
+  );
+  return asDate.toLocaleDateString("en-GB", {
+    timeZone: "UTC",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+export function firstOpenDay(
+  at: Date = new Date(),
+  closedKeys?: Iterable<string>,
+): PickupDay | undefined {
+  const now = osloNow(at);
+  const today = { year: now.year, month: now.month, day: now.day };
+  for (let offset = 0; offset < BOOKING_HORIZON_DAYS; offset += 1) {
+    const day = addDays(today, offset);
+    if (slotsOnDay(dateKey(day), at, closedKeys).length > 0) {
+      return toPickupDay(day);
+    }
+  }
+  return undefined;
+}
+
+export function openingDaysAhead(
+  at: Date = new Date(),
+  count = 8,
+): PickupDay[] {
+  const now = osloNow(at);
+  const today = { year: now.year, month: now.month, day: now.day };
+  const days: PickupDay[] = [];
+  for (let offset = 0; offset < BOOKING_HORIZON_DAYS && days.length < count; offset += 1) {
+    const day = addDays(today, offset);
+    if (slotsOnDay(dateKey(day), at).length > 0) days.push(toPickupDay(day));
+  }
+  return days;
+}
+
+export function slotsOnDay(
+  key: string,
+  at: Date = new Date(),
+  closedKeys?: Iterable<string>,
+): PickupOption[] {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!match) return [];
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const dayNum = Number(match[3]);
+  const weekday = new Date(Date.UTC(year, month - 1, dayNum)).getUTCDay();
+  const hours = OPENING_HOURS[weekday];
+  if (!hours) return [];
+  if (new Set(closedKeys ?? []).has(key)) return [];
+
+  const now = osloNow(at);
+  const todayKey = dateKey(now);
+  if (key < todayKey) return [];
+  if (key > dateKey(addDays(now, BOOKING_HORIZON_DAYS))) return [];
+
+  const day = { year, month, day: dayNum, weekday };
+  const options: PickupOption[] = [];
+
+  if (key === todayKey) {
+    const canPickUpNow =
+      now.minutes >= hours.opens && now.minutes + PREP_MINUTES <= hours.closes;
+    if (canPickUpNow) {
+      options.push({
+        id: "now",
+        kind: "now",
+        label: "Pick up now",
+        detail: `Ready in about ${PREP_MINUTES} minutes — we'll have it waiting`,
+      });
+    }
+  }
+
+  for (const win of PICKUP_WINDOWS) {
+    if (win.start < hours.opens || win.end > hours.closes) continue;
+    if (key === todayKey && now.minutes + PREP_MINUTES > win.end) continue;
+    options.push({
+      id: `${key}T${win.start}`,
+      kind: "slot",
+      label: `${formatMinutes(win.start)} – ${formatMinutes(win.end)}`,
+      detail: describeDay(day, now),
+    });
+  }
+
+  return options;
+}
+
+export function isDayBookable(
+  key: string,
+  at: Date = new Date(),
+  closedKeys?: Iterable<string>,
+): boolean {
+  return slotsOnDay(key, at, closedKeys).length > 0;
+}
+
+/** Monday-first month cells for the checkout calendar. */
+export function monthCells(
+  year: number,
+  month: number,
+): Array<PickupDay | null> {
+  const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+  const mondayOffset = firstWeekday === 0 ? 6 : firstWeekday - 1;
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const cells: Array<PickupDay | null> = Array.from(
+    { length: mondayOffset },
+    () => null,
+  );
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+    cells.push(toPickupDay({ year, month, day, weekday }));
+  }
+
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+
+/** Server-side validation: a real open-day window inside the booking horizon. */
 export function findPickupOption(
   id: string,
   at: Date = new Date(),
+  closedKeys?: Iterable<string>,
 ): PickupOption | undefined {
-  return getPickupOptions(at).find((o) => o.id === id);
+  if (id === "now") {
+    const now = osloNow(at);
+    return slotsOnDay(dateKey(now), at, closedKeys).find(
+      (option) => option.id === "now",
+    );
+  }
+
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d+)$/.exec(id);
+  if (!match) return undefined;
+  return slotsOnDay(match[1], at, closedKeys).find((option) => option.id === id);
 }
 
 export const OPENING_HOURS_LABEL = "Wed – Sat, 12 – 17";

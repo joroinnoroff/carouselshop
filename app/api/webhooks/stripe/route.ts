@@ -42,6 +42,10 @@ export async function POST(request: Request) {
         await updateOrder(reference, {
           status: session.payment_status === "paid" ? "paid" : "pending",
           providerReference: session.id,
+          paidAt:
+            session.payment_status === "paid"
+              ? new Date(session.created * 1000).toISOString()
+              : undefined,
         });
       }
       break;

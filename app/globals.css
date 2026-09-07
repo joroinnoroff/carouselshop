@@ -91,6 +91,7 @@ textarea {
   gap: 1.5rem;
   padding: 1.25rem var(--gutter);
   background: var(--paper);
+  isolation: isolate;
 }
 
 .header-meta {
@@ -137,11 +138,12 @@ textarea {
   margin-bottom: 0.35rem;
 }
 
-/* --- spinning wordmark --------------------------------------------------- */
+/* --- 3d chrome flower ---------------------------------------------------- */
 
 .logo {
   display: inline-flex;
   align-items: center;
+  gap: 0.7rem;
   text-decoration: none;
 }
 
@@ -149,73 +151,74 @@ textarea {
   text-decoration: none;
 }
 
-.logo-stage {
-  --face: 2.1rem;
-  /* Radius of a triangular prism whose faces are --face tall. */
-  --radius: calc(var(--face) / 3.4641);
-  height: var(--face);
-  width: max-content;
-  perspective: 700px;
+.logo-word {
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
 }
 
-.logo-spin {
+.logo3d,
+.logo3d-scene {
   position: relative;
-  height: var(--face);
-  transform-style: preserve-3d;
-  animation: logo-carousel 7.5s cubic-bezier(0.72, 0.02, 0.24, 1) infinite;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  contain: layout paint;
 }
 
-.logo-face {
+.logo3d--mark {
+  flex: none;
+  width: 2.4rem;
+  height: 3.15rem;
+}
+
+.logo3d--hero {
+  width: min(100%, 36rem);
+  max-height: min(72vh, 40rem);
+  aspect-ratio: 960 / 849;
+  margin-inline: auto;
+}
+
+.logo3d-fallback,
+.logo3d-canvas {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-  font-size: clamp(1.4rem, 3.2vw, 1.9rem);
-  font-weight: 300;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  line-height: 1;
-  backface-visibility: hidden;
-  transform: rotateX(var(--turn)) translateZ(var(--radius));
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
-.logo-face:nth-child(1) { --turn: 0deg; }
-.logo-face:nth-child(2) { --turn: -120deg; }
-.logo-face:nth-child(3) { --turn: -240deg; }
-
-/* Keeps the layout box the right width without showing a fourth copy. */
-.logo-sizer {
-  visibility: hidden;
-  font-size: clamp(1.4rem, 3.2vw, 1.9rem);
-  font-weight: 300;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  line-height: 1;
+.logo3d-canvas {
+  display: block;
 }
 
-@keyframes logo-carousel {
-  0%, 22% { transform: rotateX(0deg); }
-  33%, 55% { transform: rotateX(120deg); }
-  66%, 88% { transform: rotateX(240deg); }
-  100% { transform: rotateX(360deg); }
+.logo3d-scene.is-ready .logo3d-fallback {
+  opacity: 0;
+  pointer-events: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .logo-spin {
-    animation: none;
-  }
+.hero-logo {
+  margin: 0;
 }
 
 /* --- home ---------------------------------------------------------------- */
 
 .hero {
   display: flex;
+  flex-direction: column;
+  gap: clamp(1.5rem, 4vw, 2.75rem);
+  padding: clamp(1.25rem, 4vw, 2.5rem) 0 clamp(3.5rem, 8vw, 6rem);
+}
+
+.hero-bar {
+  display: flex;
   flex-wrap: wrap;
   gap: 2rem 3rem;
   justify-content: space-between;
   align-items: flex-start;
-  padding: clamp(4rem, 12vw, 9rem) 0 clamp(3.5rem, 8vw, 6rem);
 }
 
 .hero-lede {
@@ -450,14 +453,52 @@ a.button {
   padding-top: clamp(2rem, 6vw, 4rem);
 }
 
+.checkout-pay {
+  display: none;
+}
+
+.checkout-pay-button {
+  width: 100%;
+  margin-top: 1.5rem;
+}
+
+.checkout-pay-button:disabled {
+  background: var(--fill-strong);
+  color: var(--ink-soft);
+  opacity: 1;
+}
+
+.checkout-pay-button:not(:disabled),
+.checkout-pay-button:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.summary-pay .checkout-pay-button {
+  margin-top: 1.5rem;
+}
+
 @media (max-width: 860px) {
   .checkout {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* On a phone the order recap belongs above the form, not a scroll away. */
+  /* Recap first, form next, pay last — so the thumb is not covering the button. */
   .summary {
     order: -1;
+  }
+
+  .summary-pay {
+    display: none;
+  }
+
+  .checkout-pay {
+    display: block;
+    padding-top: 0.5rem;
+  }
+
+  .checkout-pay .checkout-pay-button {
+    margin-top: 0;
   }
 }
 
@@ -522,6 +563,7 @@ legend {
   font-size: 0.78rem;
   color: var(--ink-soft);
   margin-top: 0.4rem;
+  margin-bottom: 0.4rem;
 }
 
 .field-row {
@@ -533,6 +575,153 @@ legend {
 .option-list {
   display: grid;
   gap: 0.6rem;
+}
+
+.pickup-date-wrap {
+  position: relative;
+}
+
+.pickup-date {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  appearance: none;
+  border: 0;
+  background: var(--fill);
+  padding: 0.95rem 1rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.pickup-date:hover {
+  background: var(--fill-strong);
+}
+
+.pickup-date strong {
+  display: block;
+  font-weight: 400;
+  font-size: 1.05rem;
+}
+
+.pickup-date-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.pickup-date-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.pickup-date-caret {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.pickup-cal {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  width: 100%;
+  background: var(--paper);
+  padding: 1rem 1.05rem 1.1rem;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.12);
+}
+
+.pickup-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.pickup-cal-head strong {
+  font-weight: 400;
+  font-size: 0.95rem;
+}
+
+.pickup-cal-head button {
+  appearance: none;
+  border: 0;
+  background: var(--fill);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.pickup-cal-head button:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.pickup-cal-week,
+.pickup-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.2rem;
+}
+
+.pickup-cal-week {
+  margin-bottom: 0.35rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.pickup-cal-day {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.pickup-cal-day:hover:not(:disabled):not(.is-on) {
+  background: var(--fill-strong);
+}
+
+.pickup-cal-day.is-on {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.pickup-cal-day:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+
+.pickup-cal-day.is-shut {
+  opacity: 1;
+  background: var(--fill);
+  color: var(--ink-soft);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.pickup-cal-legend {
+  margin-top: 0.75rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+.pickup-slots {
+  margin-top: 0.85rem;
 }
 
 .option {
@@ -594,6 +783,119 @@ legend {
   background: rgba(252, 247, 198, 0.2);
   color: var(--paper);
 }
+
+.option:has(.pay-marks) .option-badge {
+  margin-left: 0;
+}
+
+.pay-marks {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: none;
+}
+
+.pay-mark {
+  display: block;
+  height: 1.55rem;
+  width: auto;
+}
+
+.stripe-panel {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+  max-width: 36rem;
+}
+
+.stripe-embed {
+  width: 100%;
+  min-height: 12rem;
+}
+
+.payment-stage {
+  position: relative;
+  min-height: 16rem;
+}
+
+.stripe-embed-wrap {
+  width: 100%;
+}
+
+.stripe-embed-wrap.is-pending {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.payment-only {
+  max-width: 36rem;
+  padding-bottom: 3rem;
+}
+
+.payment-only .link-button {
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 861px) {
+  .payment-only {
+    margin-inline: auto;
+    width: 100%;
+    text-align: center;
+  }
+
+  .payment-only .payment-stage {
+    text-align: left;
+  }
+}
+
+.payment-only .logo-wait {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--paper);
+}
+
+.logo-wait {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 3rem 0;
+  color: var(--ink);
+  text-align: center;
+}
+
+.logo-wait p {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.logo-wait-mark {
+  width: 6.4rem;
+  height: 8.4rem;
+}
+
+.logo-wait-mark .logo3d--mark {
+  width: 100%;
+  height: 100%;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 
 /* --- summary ------------------------------------------------------------- */
 
@@ -835,5 +1137,426 @@ legend {
   .stage,
   .stage-dot {
     transition: none;
+  }
+}
+
+/* --- shop desk ----------------------------------------------------------- */
+
+.shop-paused {
+  width: 100%;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0.7rem 0;
+}
+
+.shop-paused-track {
+  display: flex;
+  width: max-content;
+  animation: shop-paused-scroll 48s linear infinite;
+}
+
+.shop-paused-set {
+  display: flex;
+  align-items: center;
+  gap: 3.5rem;
+  padding-right: 3.5rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@keyframes shop-paused-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-paused-track {
+    animation: none;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .shop-paused-set:last-child {
+    display: none;
+  }
+
+  .shop-paused-set {
+    padding-right: 0;
+  }
+
+  .shop-paused-set span:nth-child(n + 2) {
+    display: none;
+  }
+}
+
+.admin {
+  max-width: 78rem;
+  padding-bottom: 4rem;
+}
+
+.admin-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem 2rem;
+  padding-top: clamp(1.5rem, 5vw, 3rem);
+  margin-bottom: 1.75rem;
+}
+
+.admin-kicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 0.35rem;
+}
+
+.admin-date {
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  font-weight: 300;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+.admin-clock {
+  margin-top: 0.45rem;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.admin-shop {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: start;
+}
+
+.admin-shop-state {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.admin-paused {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0.8rem 1rem;
+  margin-bottom: 2rem;
+  font-size: 0.88rem;
+}
+
+.admin-closed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-closed li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  background: var(--fill);
+  padding: 0.85rem 1rem;
+}
+
+.admin-closed strong {
+  display: block;
+  font-weight: 400;
+}
+
+.admin-closed span {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.admin-closed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.admin-filters {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 1.75rem;
+}
+
+.admin-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.admin-chip {
+  appearance: none;
+  border: 0;
+  background: var(--fill);
+  color: var(--ink);
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.admin-chip.is-on,
+.admin-chip.is-on:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.admin-section {
+  margin-bottom: 2.5rem;
+}
+
+.admin-section h2 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 0.85rem;
+}
+
+.admin-empty {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.admin-day {
+  margin-bottom: 2.4rem;
+}
+
+.admin-day:last-child {
+  margin-bottom: 0;
+}
+
+.admin-day-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 1.25rem;
+  font-size: clamp(1.35rem, 3vw, 1.85rem);
+  font-weight: 300;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  margin-bottom: 1rem;
+}
+
+.admin-day-title span {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+}
+
+@media (min-width: 720px) {
+  .admin-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .admin-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.admin-order {
+  display: grid;
+  gap: 1.15rem;
+  align-content: start;
+  background: var(--fill);
+  padding: clamp(1.2rem, 3vw, 1.7rem);
+}
+
+.admin-order.is-ready {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.admin-order.is-ready a,
+.admin-order.is-ready .admin-pickup span:not(.status-pill),
+.admin-order.is-ready .admin-customer a,
+.admin-order.is-ready .admin-ref,
+.admin-order.is-ready .admin-kind,
+.admin-order.is-ready .admin-paid span,
+.admin-order.is-ready .admin-customer-note span,
+.admin-order.is-ready .field > span,
+.admin-order.is-ready .link-button {
+  color: rgba(252, 247, 198, 0.7);
+}
+
+.admin-order.is-ready .link-button:hover,
+.admin-order.is-ready a:hover {
+  color: var(--paper);
+}
+
+.admin-order.is-ready .field input,
+.admin-order.is-ready .field textarea {
+  background: rgba(252, 247, 198, 0.12);
+  color: var(--paper);
+}
+
+.admin-order.is-ready .field input:hover,
+.admin-order.is-ready .field textarea:hover,
+.admin-order.is-ready .field input:focus,
+.admin-order.is-ready .field textarea:focus {
+  background: rgba(252, 247, 198, 0.2);
+}
+
+.admin-order.is-ready .button:not(.button--solid) {
+  background: rgba(252, 247, 198, 0.14);
+  color: var(--paper);
+}
+
+.admin-order.is-ready .button--solid {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.admin-order.is-ready .admin-pickup .status-pill,
+.admin-order.is-ready .status-pill {
+  background: var(--paper);
+  color: #000000;
+}
+
+.admin-order.is-cancelled {
+  opacity: 0.55;
+}
+
+.admin-pickup {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.admin-pickup strong {
+  display: block;
+  font-weight: 400;
+  font-size: 1.2rem;
+}
+
+.admin-pickup span {
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+
+.admin-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.admin-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.95rem;
+}
+
+.admin-total {
+  margin-top: 0.45rem;
+  font-size: 1.05rem;
+}
+
+.admin-paid {
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.9rem;
+}
+
+.admin-paid span,
+.admin-kind {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.admin-customer {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.admin-customer strong {
+  font-weight: 400;
+}
+
+.admin-customer a {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.admin-ref {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.admin-customer-note {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.95rem;
+}
+
+.admin-customer-note span {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.admin-note {
+  margin-bottom: 0;
+}
+
+.admin-note textarea {
+  min-height: 4.5rem;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.admin-delete {
+  margin-left: auto;
+}
+
+.admin-cancel:not(:disabled):hover {
+  background: #a3312a;
+  color: var(--paper);
+}
+
+@media (min-width: 720px) {
+  .admin-shop {
+    justify-items: end;
+    text-align: right;
   }
 }

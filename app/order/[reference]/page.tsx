@@ -28,14 +28,26 @@ async function confirmPayment(
       const session = await getStripe().checkout.sessions.retrieve(id);
       if (session.client_reference_id !== order.reference) return order;
       if (session.payment_status === "paid") {
-        return (await updateOrder(order.reference, { status: "paid" })) ?? order;
+        return (
+          (await updateOrder(order.reference, {
+            status: "paid",
+            paidAt: order.paidAt ?? new Date().toISOString(),
+          })) ?? order
+        );
       }
       return order;
     }
 
+    if (order.provider === "invoice") return order;
+
     const payment = await getVippsPayment(order.reference);
     if (payment.state === "AUTHORIZED") {
-      return (await updateOrder(order.reference, { status: "paid" })) ?? order;
+      return (
+        (await updateOrder(order.reference, {
+          status: "paid",
+          paidAt: order.paidAt ?? new Date().toISOString(),
+        })) ?? order
+      );
     }
     if (payment.state === "ABORTED" || payment.state === "EXPIRED") {
       return (
@@ -51,12 +63,21 @@ async function confirmPayment(
   }
 }
 
-const STATUS_COPY: Record<Order["status"], string> = {
-  paid: "Paid — see you in the shop",
-  pending: "Waiting for payment",
-  cancelled: "Cancelled",
-  failed: "Payment failed",
-};
+function statusCopy(order: Order): string {
+  if (order.provider === "invoice" && order.status === "pending") {
+    return "Invoice — see you in the shop";
+  }
+  if (order.status === "paid") return "Paid — see you in the shop";
+  if (order.status === "pending") return "Waiting for payment";
+  if (order.status === "cancelled") return "Cancelled";
+  return "Payment failed";
+}
+
+function paymentCopy(order: Order): string {
+  if (order.provider === "invoice") return "Invoice";
+  if (order.provider === "stripe") return "Card";
+  return "Vipps";
+}
 
 export default async function OrderPage({
   params,
@@ -99,23 +120,27 @@ export default async function OrderPage({
 
   return (
     <div className="confirmation">
-      {order.status === "paid" ? <ClearCart /> : null}
+      {order.status === "paid" || order.provider === "invoice" ? (
+        <ClearCart />
+      ) : null}
 
-      <span className="status-pill">{STATUS_COPY[order.status]}</span>
+      <span className="status-pill">{statusCopy(order)}</span>
 
       <h1 className="page-title" style={{ marginBottom: 0 }}>
-        {order.status === "paid"
+        {order.status === "paid" || order.provider === "invoice"
           ? `Thank you, ${order.customerName.split(" ")[0]}`
           : "Your order"}
       </h1>
 
       <p style={{ color: "var(--ink-soft)" }}>
-        {order.status === "paid"
-          ? `We are making it up now. Collect it at ${SHOP_ADDRESS}.`
-          : "We have not seen the payment yet. This page updates when we do."}
+        {order.provider === "invoice"
+          ? `We will send the invoice to ${order.customerEmail}. Collect it at ${SHOP_ADDRESS}.`
+          : order.status === "paid"
+            ? `We are making it up now. Collect it at ${SHOP_ADDRESS}.`
+            : "We have not seen the payment yet. This page updates when we do."}
       </p>
 
-      {order.status === "paid" ? (
+      {order.status === "paid" || order.provider === "invoice" ? (
         <OrderProgress
           placedAt={order.createdAt}
           readyAt={readyAt.toISOString()}
@@ -135,6 +160,16 @@ export default async function OrderPage({
         <dt>Pickup</dt>
         <dd>{pickupLine}</dd>
 
+        {order.customerKind === "bedrift" && order.companyName ? (
+          <>
+            <dt>Company</dt>
+            <dd>
+              {order.companyName}
+              {order.orgNumber ? ` · ${order.orgNumber}` : ""}
+            </dd>
+          </>
+        ) : null}
+
         <dt>Order</dt>
         <dd>
           {order.lines
@@ -144,8 +179,7 @@ export default async function OrderPage({
 
         <dt>Total</dt>
         <dd>
-          {formatNok(order.totalOre)} ·{" "}
-          {order.provider === "stripe" ? "Card" : "Vipps"}
+          {formatNok(order.totalOre)} · {paymentCopy(order)}
         </dd>
 
         {order.message ? (
