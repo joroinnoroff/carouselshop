@@ -36,13 +36,17 @@ export function OrderConfirmation({ order }: { order: DemoOrder }) {
 
       <h1 className="page-title" style={{ marginBottom: 0 }}>
         {confirmed
-          ? `Thank you, ${order.customerName.split(" ")[0]}`
+          ? order.customerName.trim()
+            ? `Thank you, ${order.customerName.split(" ")[0]}`
+            : "Thank you"
           : "Your order"}
       </h1>
 
       <p style={{ color: "var(--ink-soft)" }}>
         {order.provider === "invoice"
-          ? `We will send the invoice to ${order.customerEmail}. Collect it at ${SHOP_ADDRESS}.`
+          ? order.customerEmail.trim()
+            ? `We will send the invoice to ${order.customerEmail}. Collect it at ${SHOP_ADDRESS}.`
+            : `We will send the invoice. Collect it at ${SHOP_ADDRESS}.`
           : order.status === "paid"
             ? `We are making it up now. Collect it at ${SHOP_ADDRESS}.`
             : "We have not seen the payment yet. This page updates when we do."}

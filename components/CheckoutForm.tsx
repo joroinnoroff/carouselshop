@@ -10,24 +10,15 @@ import { PickupDateField } from "./PickupDateField";
 import { useCart, type CartLine } from "./cart";
 import { useShopStatus } from "./shop-status";
 import { createDemoReference, writeDemoOrder } from "@/lib/demo-order";
-import type { ClosedDay } from "@/lib/closed-days";
+import { closedKeysOf, type ClosedDay } from "@/lib/closed-days";
 import type { CustomerKind, PaymentProvider } from "@/lib/orders";
-import { findPickupOption } from "@/lib/pickup";
+import { findPickupOption, firstOpenDay, slotsOnDay } from "@/lib/pickup";
 import { formatNok } from "@/lib/products";
 
 const MESSAGE_LIMIT = 500;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const STEPS = ["pickup", "kind", "details", "pay"] as const;
 type Step = (typeof STEPS)[number];
-
-function detailsReady(name: string, phone: string, email: string) {
-  return (
-    name.trim().length >= 2 &&
-    phone.replace(/\D/g, "").length >= 8 &&
-    EMAIL_PATTERN.test(email.trim())
-  );
-}
 
 function BasketSummary({
   lines,
@@ -108,6 +99,7 @@ export function CheckoutForm({
   const { lines, totalOre, itemCount, hydrated, setQuantity } = useCart();
   const { hydrated: shopHydrated, shopOpen } = useShopStatus();
 
+  const [useDemo] = useState(true);
   const [step, setStep] = useState<Step>("pickup");
   const [pickupOptionId, setPickupOptionId] = useState("");
   const [provider, setProvider] = useState<PaymentProvider | null>(null);
@@ -123,19 +115,15 @@ export function CheckoutForm({
     cancelled ? "Payment was cancelled — your basket is still here." : null,
   );
   const [submitting, setSubmitting] = useState(false);
-  const companyReady =
-    customerKind === "privat" ||
-    (customerKind === "bedrift" &&
-      companyName.trim().length >= 2 &&
-      orgNumber.replace(/\D/g, "").length === 9);
   const canContinue =
-    step === "pickup"
+    useDemo ||
+    (step === "pickup"
       ? Boolean(pickupOptionId)
       : step === "kind"
         ? Boolean(customerKind)
         : step === "details"
-          ? detailsReady(name, phone, email) && companyReady && Boolean(provider)
-          : false;
+          ? Boolean(provider)
+          : false);
 
   if (shopHydrated && !shopOpen) {
     return (
@@ -193,14 +181,27 @@ export function CheckoutForm({
   }
 
   async function startCheckout() {
-    if (!provider || !customerKind) {
+    const kind = customerKind ?? (useDemo ? "privat" : null);
+    const pay =
+      provider ??
+      (useDemo ? (kind === "bedrift" ? "invoice" : "stripe") : null);
+
+    if (!pay || !kind) {
       setError("Choose how you would like to pay.");
       setChoosingPayment(true);
       setStep("details");
       return;
     }
 
-    const pickup = findPickupOption(pickupOptionId, new Date());
+    const nowDate = new Date();
+    const closedKeys = closedKeysOf(closedDays);
+    let pickup = findPickupOption(pickupOptionId, nowDate, closedKeys);
+    if (!pickup && useDemo) {
+      const first = firstOpenDay(nowDate, closedKeys);
+      pickup = first
+        ? slotsOnDay(first.key, nowDate, closedKeys)[0]
+        : undefined;
+    }
     if (!pickup) {
       setError("That pickup time is no longer available — please pick another.");
       setStep("pickup");
@@ -214,11 +215,11 @@ export function CheckoutForm({
     await new Promise((resolve) => window.setTimeout(resolve, 2200));
 
     const reference = createDemoReference();
-    const now = new Date().toISOString();
+    const now = nowDate.toISOString();
     writeDemoOrder({
       reference,
-      status: provider === "invoice" ? "pending" : "paid",
-      provider,
+      status: pay === "invoice" ? "pending" : "paid",
+      provider: pay,
       lines: lines.map((line) => ({
         name: line.bouquet.name,
         quantity: line.quantity,
@@ -228,12 +229,12 @@ export function CheckoutForm({
       pickup,
       customerName: name,
       customerEmail: email,
-      customerKind,
+      customerKind: kind,
       companyName: companyName.trim() || undefined,
       orgNumber: orgNumber.trim() || undefined,
       message,
       createdAt: now,
-      paidAt: provider === "invoice" ? undefined : now,
+      paidAt: pay === "invoice" ? undefined : now,
     });
 
     window.location.href = `/order/${reference}?demo=1`;
@@ -287,7 +288,7 @@ export function CheckoutForm({
   const stepIndex = STEPS.indexOf(step);
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} noValidate>
       <h1 className="page-title page-title--checkout">Checkout</h1>
       <p className="checkout-step-count">
         Step {stepIndex + 1} of {STEPS.length}
@@ -357,9 +358,7 @@ export function CheckoutForm({
                 <span>Name</span>
                 <input
                   name="name"
-                  required
                   autoComplete="name"
-                  minLength={2}
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                 />
@@ -368,7 +367,6 @@ export function CheckoutForm({
                 <span>Phone</span>
                 <input
                   name="phone"
-                  required
                   inputMode="tel"
                   autoComplete="tel"
                   placeholder="472 42 457"
@@ -381,8 +379,7 @@ export function CheckoutForm({
               <span>Email</span>
               <input
                 name="email"
-                type="email"
-                required
+                type="text"
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -394,7 +391,6 @@ export function CheckoutForm({
                   <span>Company</span>
                   <input
                     name="companyName"
-                    required
                     autoComplete="organization"
                     value={companyName}
                     onChange={(event) => setCompanyName(event.target.value)}
@@ -404,7 +400,6 @@ export function CheckoutForm({
                   <span>Org.nr</span>
                   <input
                     name="orgNumber"
-                    required
                     inputMode="numeric"
                     placeholder="912 345 678"
                     value={orgNumber}
