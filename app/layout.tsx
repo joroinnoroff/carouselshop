@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { preload } from "react-dom";
 
+import { BasketToaster } from "@/components/BasketToaster";
 import { CarouselLogo } from "@/components/CarouselLogo";
 import { CartLink } from "@/components/CartLink";
 import { CartProvider } from "@/components/cart";
@@ -37,6 +38,7 @@ export default function RootLayout({
                   <CartLink />
                 </nav>
               </header>
+              <BasketToaster />
 
               <ShopPausedBanner />
 

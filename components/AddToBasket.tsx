@@ -1,5 +1,6 @@
 "use client";
 
+import { toastAddedToBasket } from "./BasketToaster";
 import { useCart } from "./cart";
 import { useShopStatus } from "./shop-status";
 import type { Bouquet } from "@/lib/products";
@@ -32,7 +33,14 @@ export function AddToBasket({ bouquet }: { bouquet: Bouquet }) {
   if (quantity === 0) {
     return (
       <div className="bouquet-actions">
-        <button type="button" className="button" onClick={() => add(bouquet.id)}>
+        <button
+          type="button"
+          className="button"
+          onClick={() => {
+            add(bouquet.id);
+            toastAddedToBasket(bouquet);
+          }}
+        >
           Add to basket
         </button>
       </div>
@@ -52,7 +60,10 @@ export function AddToBasket({ bouquet }: { bouquet: Bouquet }) {
         <span aria-live="polite">{quantity}</span>
         <button
           type="button"
-          onClick={() => setQuantity(bouquet.id, quantity + 1)}
+          onClick={() => {
+            setQuantity(bouquet.id, quantity + 1);
+            toastAddedToBasket(bouquet);
+          }}
           disabled={quantity >= 10}
           aria-label={`Add another ${bouquet.name}`}
         >
