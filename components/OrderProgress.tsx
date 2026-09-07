@@ -6,8 +6,7 @@ const SEGMENTS = 36;
 
 const STAGES = [
   { at: 0, label: "Payment received" },
-  { at: 0.15, label: "Stems picked in the shop" },
-  { at: 0.6, label: "Tied and wrapped" },
+  { at: 0.55, label: "Tied and wrapped" },
   { at: 1, label: "Waiting for you at the counter" },
 ];
 
@@ -19,6 +18,9 @@ type Props = {
   pickupLabel: string;
 };
 
+const PAID_MARK = 0.22;
+const PREP_MS = 2 * 60 * 60 * 1000;
+
 function countdown(msRemaining: number): string {
   if (msRemaining <= 0) return "Ready now";
 
@@ -27,9 +29,17 @@ function countdown(msRemaining: number): string {
   const hours = Math.floor((totalMinutes % 1440) / 60);
   const minutes = totalMinutes % 60;
 
-  if (days > 0) return `Ready in ${days} d ${hours} h`;
+  if (days > 1) return `Ready in ${days} days`;
+  if (days === 1) return `Ready in 1 day ${hours} h`;
   if (hours > 0) return `Ready in ${hours} h ${minutes} min`;
   return `Ready in ${minutes} min`;
+}
+
+function prepProgress(placed: number, ready: number, now: number): number {
+  if (now >= ready) return 1;
+  const prepStart = ready - PREP_MS;
+  if (now < prepStart) return PAID_MARK;
+  return PAID_MARK + (1 - PAID_MARK) * ((now - prepStart) / PREP_MS);
 }
 
 export function OrderProgress({
@@ -49,9 +59,8 @@ export function OrderProgress({
     return () => clearInterval(timer);
   }, []);
 
-  const span = Math.max(ready - placed, 60_000);
-  const progress = Math.min(Math.max((now - placed) / span, 0), 1);
-  const filled = Math.round(progress * SEGMENTS);
+  const progress = prepProgress(placed, ready, now);
+  const filled = Math.max(1, Math.round(progress * SEGMENTS));
   const done = progress >= 1;
 
   return (

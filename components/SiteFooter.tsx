@@ -6,7 +6,8 @@ import { OPENING_HOURS_LABEL, SHOP_ADDRESS } from "@/lib/pickup";
 
 export function SiteFooter() {
   const pathname = usePathname();
-  const onCheckout = pathname.startsWith("/checkout");
+  const hidePickupNote =
+    pathname.startsWith("/checkout") || pathname.startsWith("/order");
 
   return (
     <footer className="site-footer">
@@ -22,7 +23,7 @@ export function SiteFooter() {
         <br />
         <a href="tel:+4747242457">472 42 457</a>
       </div>
-      {onCheckout ? null : (
+      {hidePickupNote ? null : (
         <div>
           <strong>Pickup only</strong>
           All orders are collected in the shop.
