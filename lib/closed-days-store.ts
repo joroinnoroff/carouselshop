@@ -1,60 +1,63 @@
 /**
  * Days the shop will not take pickup — full book or a private event.
- * File-backed for the demo; swap list/close/open for Supabase later.
+ * File-backed locally; in-memory on Vercel until this moves to a database.
  */
-
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 
 import {
   closedReasonLabel,
   type ClosedDay,
   type ClosedReason,
 } from "./closed-days";
+import { dataFile, readJsonRecord, writeJsonRecord } from "./local-json";
 import { openingDaysAhead } from "./pickup";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
-const DATA_FILE = path.join(DATA_DIR, "closed-days.json");
+const DATA_FILE = dataFile("closed-days.json");
 
+let memory: Record<string, ClosedDay> | null = null;
 let writeQueue: Promise<unknown> = Promise.resolve();
 
-function seedClosedDays(): ClosedDay[] {
+function seedClosedDays(): Record<string, ClosedDay> {
   const upcoming = openingDaysAhead(new Date(), 8);
   const friday = upcoming.find((day) => day.weekday === 5);
   const saturday = upcoming.find((day) => day.weekday === 6);
-  const days: ClosedDay[] = [];
+  const days: Record<string, ClosedDay> = {};
 
   if (friday) {
-    days.push({
+    days[friday.key] = {
       key: friday.key,
       reason: "full",
       note: closedReasonLabel("full"),
-    });
+    };
   }
   if (saturday) {
-    days.push({
+    days[saturday.key] = {
       key: saturday.key,
       reason: "event",
       note: closedReasonLabel("event"),
-    });
+    };
   }
 
   return days;
 }
 
 async function readAll(): Promise<Record<string, ClosedDay>> {
-  try {
-    return JSON.parse(await readFile(DATA_FILE, "utf8")) as Record<
-      string,
-      ClosedDay
-    >;
-  } catch {
-    const seeded: Record<string, ClosedDay> = {};
-    for (const day of seedClosedDays()) seeded[day.key] = day;
-    await mkdir(DATA_DIR, { recursive: true });
-    await writeFile(DATA_FILE, JSON.stringify(seeded, null, 2), "utf8");
-    return seeded;
+  if (memory) return memory;
+
+  const stored = await readJsonRecord<ClosedDay>(DATA_FILE);
+  if (Object.keys(stored).length > 0) {
+    memory = stored;
+    return memory;
   }
+
+  // Demo seed only on a writable local disk — never on Vercel.
+  if (!process.env.VERCEL) {
+    memory = seedClosedDays();
+    await writeJsonRecord(DATA_FILE, memory);
+    return memory;
+  }
+
+  memory = {};
+  return memory;
 }
 
 async function mutate<T>(
@@ -63,8 +66,8 @@ async function mutate<T>(
   const run = writeQueue.then(async () => {
     const days = await readAll();
     const result = await change(days);
-    await mkdir(DATA_DIR, { recursive: true });
-    await writeFile(DATA_FILE, JSON.stringify(days, null, 2), "utf8");
+    memory = days;
+    await writeJsonRecord(DATA_FILE, days);
     return result;
   });
   writeQueue = run.catch(() => undefined);

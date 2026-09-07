@@ -7,9 +7,7 @@
  * database calls and nothing else in the app has to change.
  */
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-
+import { dataFile, readJsonRecord, writeJsonRecord } from "./local-json";
 import type { PickupOption } from "./pickup";
 
 export type OrderStatus = "pending" | "paid" | "cancelled" | "failed";
@@ -46,19 +44,16 @@ export type Order = {
   providerReference?: string;
 };
 
-const DATA_DIR = path.join(process.cwd(), ".data");
-const DATA_FILE = path.join(DATA_DIR, "orders.json");
+const DATA_FILE = dataFile("orders.json");
 
 /** Serialises writes so two checkouts cannot clobber each other's file. */
 let writeQueue: Promise<unknown> = Promise.resolve();
+let memory: Record<string, Order> | null = null;
 
 async function readAll(): Promise<Record<string, Order>> {
-  try {
-    return JSON.parse(await readFile(DATA_FILE, "utf8")) as Record<string, Order>;
-  } catch {
-    // No file yet, or it was corrupted — start fresh rather than fail a sale.
-    return {};
-  }
+  if (memory) return memory;
+  memory = await readJsonRecord<Order>(DATA_FILE);
+  return memory;
 }
 
 async function mutate<T>(
@@ -67,8 +62,8 @@ async function mutate<T>(
   const run = writeQueue.then(async () => {
     const orders = await readAll();
     const result = await change(orders);
-    await mkdir(DATA_DIR, { recursive: true });
-    await writeFile(DATA_FILE, JSON.stringify(orders, null, 2), "utf8");
+    memory = orders;
+    await writeJsonRecord(DATA_FILE, orders);
     return result;
   });
   // Keep the chain alive even if this write throws.
