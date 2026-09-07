@@ -7,12 +7,13 @@ import { useState } from "react";
 import { LogoSpinner } from "./LogoSpinner";
 import { MastercardMark, VippsMark, VisaMark } from "./PaymentMarks";
 import { PickupDateField } from "./PickupDateField";
-import { StripeEmbed } from "./StripeEmbed";
 import { useCart } from "./cart";
 import { useShopStatus } from "./shop-status";
-import { formatNok } from "@/lib/products";
+import { createDemoReference, writeDemoOrder } from "@/lib/demo-order";
 import type { ClosedDay } from "@/lib/closed-days";
 import type { CustomerKind, PaymentProvider } from "@/lib/orders";
+import { findPickupOption } from "@/lib/pickup";
+import { formatNok } from "@/lib/products";
 
 const MESSAGE_LIMIT = 500;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -40,7 +41,6 @@ type Props = {
   openingHours: string;
   cancelled: boolean;
   payments: { stripe: boolean; vipps: boolean };
-  stripePublishableKey: string;
 };
 
 export function CheckoutForm({
@@ -49,7 +49,6 @@ export function CheckoutForm({
   openingHours,
   cancelled,
   payments,
-  stripePublishableKey,
 }: Props) {
   const { lines, totalOre, itemCount, hydrated } = useCart();
   const { hydrated: shopHydrated, shopOpen } = useShopStatus();
@@ -69,10 +68,6 @@ export function CheckoutForm({
     cancelled ? "Payment was cancelled — your basket is still here." : null,
   );
   const [submitting, setSubmitting] = useState(false);
-  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(
-    null,
-  );
-  const [embedReady, setEmbedReady] = useState(false);
   const companyReady =
     customerKind === "privat" ||
     (customerKind === "bedrift" &&
@@ -123,8 +118,6 @@ export function CheckoutForm({
   function chooseProvider(next: PaymentProvider) {
     setProvider(next);
     setChoosingPayment(false);
-    setStripeClientSecret(null);
-    setEmbedReady(false);
   }
 
   function chooseKind(next: CustomerKind) {
@@ -136,16 +129,7 @@ export function CheckoutForm({
     if (provider === "invoice" || !provider) {
       setProvider(null);
       setChoosingPayment(true);
-      setStripeClientSecret(null);
-      setEmbedReady(false);
     }
-  }
-
-  function leavePayment() {
-    setStripeClientSecret(null);
-    setEmbedReady(false);
-    setSubmitting(false);
-    setStep("details");
   }
 
   function goBack() {
@@ -161,70 +145,43 @@ export function CheckoutForm({
       return;
     }
 
+    const pickup = findPickupOption(pickupOptionId, new Date());
+    if (!pickup) {
+      setError("That pickup time is no longer available — please pick another.");
+      setStep("pickup");
+      return;
+    }
+
     setError(null);
     setSubmitting(true);
     setStep("pay");
-    if (provider === "stripe") setEmbedReady(false);
 
-    try {
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: lines.map((line) => ({
-            bouquetId: line.bouquet.id,
-            quantity: line.quantity,
-          })),
-          pickupOptionId,
-          provider,
-          customerKind,
-          companyName,
-          orgNumber,
-          name,
-          phone,
-          email,
-          message,
-        }),
-      });
+    await new Promise((resolve) => window.setTimeout(resolve, 2200));
 
-      const body = (await response.json()) as {
-        redirectUrl?: string;
-        clientSecret?: string;
-        error?: string;
-      };
+    const reference = createDemoReference();
+    const now = new Date().toISOString();
+    writeDemoOrder({
+      reference,
+      status: provider === "invoice" ? "pending" : "paid",
+      provider,
+      lines: lines.map((line) => ({
+        name: line.bouquet.name,
+        quantity: line.quantity,
+        unitPriceOre: line.bouquet.priceOre,
+      })),
+      totalOre,
+      pickup,
+      customerName: name,
+      customerEmail: email,
+      customerKind,
+      companyName: companyName.trim() || undefined,
+      orgNumber: orgNumber.trim() || undefined,
+      message,
+      createdAt: now,
+      paidAt: provider === "invoice" ? undefined : now,
+    });
 
-      if (!response.ok) {
-        setError(body.error ?? "Something went wrong. Please try again.");
-        setSubmitting(false);
-        setStep("details");
-        return;
-      }
-
-      if (provider === "stripe") {
-        if (!body.clientSecret) {
-          setError("Stripe did not start the card form. Please try again.");
-          setSubmitting(false);
-          setStep("details");
-          return;
-        }
-        setStripeClientSecret(body.clientSecret);
-        setSubmitting(false);
-        return;
-      }
-
-      if (!body.redirectUrl) {
-        setError(body.error ?? "Something went wrong. Please try again.");
-        setSubmitting(false);
-        setStep("details");
-        return;
-      }
-
-      window.location.href = body.redirectUrl;
-    } catch {
-      setError("We could not reach the payment provider. Please try again.");
-      setSubmitting(false);
-      setStep("details");
-    }
+    window.location.href = `/order/${reference}?demo=1`;
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -245,40 +202,17 @@ export function CheckoutForm({
             {error}
           </p>
         ) : null}
-        {provider === "stripe" ? (
-          <button type="button" className="link-button" onClick={leavePayment}>
-            Change order details
-          </button>
-        ) : null}
-
         <div className="checkout">
           <div className="payment-stage">
-            {provider === "stripe" && embedReady ? null : (
-              <LogoSpinner
-                label={
-                  provider === "vipps"
-                    ? "Taking you to Vipps"
-                    : provider === "invoice"
-                      ? "Sending your invoice order"
-                      : "Preparing your card payment"
-                }
-              />
-            )}
-            {stripeClientSecret ? (
-              <div
-                className={
-                  embedReady
-                    ? "stripe-embed-wrap"
-                    : "stripe-embed-wrap is-pending"
-                }
-              >
-                <StripeEmbed
-                  clientSecret={stripeClientSecret}
-                  publishableKey={stripePublishableKey}
-                  onReady={() => setEmbedReady(true)}
-                />
-              </div>
-            ) : null}
+            <LogoSpinner
+              label={
+                provider === "vipps"
+                  ? "Taking you to Vipps"
+                  : provider === "invoice"
+                    ? "Sending your invoice order"
+                    : "Preparing your card payment"
+              }
+            />
           </div>
 
           <aside className="summary">

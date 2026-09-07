@@ -1,7 +1,7 @@
 import { CheckoutForm } from "@/components/CheckoutForm";
 import { listClosedDays } from "@/lib/closed-days-store";
 import { OPENING_HOURS_LABEL } from "@/lib/pickup";
-import { stripeConfigured, stripePublishableKey } from "@/lib/stripe";
+import { stripeConfigured } from "@/lib/stripe";
 import { vippsConfigured } from "@/lib/vipps";
 
 // The pickup options are generated from the current time.
@@ -22,7 +22,6 @@ export default async function CheckoutPage({
       openingHours={OPENING_HOURS_LABEL}
       cancelled={cancelled === "1"}
       payments={{ stripe: stripeConfigured(), vipps: vippsConfigured() }}
-      stripePublishableKey={stripePublishableKey()}
     />
   );
 }
