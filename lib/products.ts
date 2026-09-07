@@ -21,7 +21,7 @@ export type Bouquet = {
 export const BOUQUETS: Bouquet[] = [
   {
     id: "hverdag",
-    name: "Hverdag",
+    name: "Small",
     tagline: "The small weekly one",
     description:
       "A compact posy — garden roses, sweet peas and gypsophila in soft pink and lilac. Made for a kitchen table, or for no reason at all.",
@@ -33,7 +33,7 @@ export const BOUQUETS: Bouquet[] = [
   },
   {
     id: "sommer",
-    name: "Sommer",
+    name: "Medium",
     tagline: "Loose, light and seasonal",
     description:
       "Whatever came in fresh that morning, tied loosely — dahlias, cosmos, chamomile and wild umbels. Always a little different.",
@@ -45,7 +45,7 @@ export const BOUQUETS: Bouquet[] = [
   },
   {
     id: "grunersgate",
-    name: "Grünersgate",
+    name: "Large",
     tagline: "Our house bouquet",
     description:
       "The one we make most days: hydrangea and roses through clouds of astilbe, with dried material for contrast, in peach paper.",
@@ -57,7 +57,7 @@ export const BOUQUETS: Bouquet[] = [
   },
   {
     id: "karusell",
-    name: "Karusell",
+    name: "Ekstra Large",
     tagline: "Generous, for an occasion",
     description:
       "Our largest arrangement. Anthurium, ranunculus and pincushion protea in hot coral and pink — florist's choice, in volume.",
